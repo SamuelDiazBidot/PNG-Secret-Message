@@ -3,7 +3,7 @@ use crc::crc32::checksum_ieee;
 use crate::chunk_type::ChunkType;
 
 #[derive(Debug)]
-struct Chunk {
+pub struct Chunk {
     length: u32,
     chunk_type: ChunkType,
     data: Vec<u8>,
@@ -11,15 +11,23 @@ struct Chunk {
 }
 
 impl Chunk {
-    fn length(&self) -> u32 {
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Self {
+        let mut bytes:Vec<u8> = Vec::from(chunk_type.bytes());
+        bytes.extend(data.clone());
+
+        let crc: u32 = checksum_ieee(&bytes);
+        Chunk{ length: data.len() as u32, chunk_type, data, crc }
+    }
+
+    pub fn length(&self) -> u32 {
         self.length
     }
 
-    fn chunk_type(&self) -> &ChunkType {
+    pub fn chunk_type(&self) -> &ChunkType {
         &self.chunk_type
     }
 
-    fn data(&self) -> &[u8] {
+    pub fn data(&self) -> &[u8] {
         &self.data
     }
 
@@ -27,11 +35,11 @@ impl Chunk {
         self.crc
     }
 
-   fn data_as_string(&self) -> Result<String, String> {
+   pub fn data_as_string(&self) -> Result<String, String> {
        String::from_utf8(self.data.clone()).map_err(|op| op.to_string())
    } 
 
-   fn as_bytes(&self) -> Vec<u8> {
+   pub fn as_bytes(&self) -> Vec<u8> {
         self.length
             .to_be_bytes()
             .iter()
@@ -51,17 +59,17 @@ impl Display for Chunk {
 }
 
 impl TryFrom<&[u8]>  for Chunk {
-    type Error = &'static str;
+    type Error = Box<dyn std::error::Error>;
 
     fn try_from(value: &[u8]) -> Result<Chunk, Self::Error> {
         //get data
         let length:u32 = u32::from_be_bytes(value[0..4].try_into().unwrap());
-        let chunk_type: ChunkType =  ChunkType::from_str(std::str::from_utf8(&value[4..8]).unwrap()).unwrap();
+        let chunk_type: ChunkType =  ChunkType::from_str(std::str::from_utf8(&value[4..8]).unwrap())?;
         let data: Vec<u8> = value[8..value.len()-4].to_vec();
         let crc: u32 = u32::from_be_bytes(value[value.len() - 4..].try_into().unwrap());
 
         if crc != checksum_ieee(&value[4..value.len()-4]) {
-            return Err("Checksum not equal")
+            return Err("Checksum not equal".into())
         }
 
         Ok(Chunk{length: length, chunk_type: chunk_type, data:data, crc:crc})

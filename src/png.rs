@@ -1,3 +1,90 @@
+use std::{convert::{TryFrom, TryInto}, fmt::{Display, Formatter}};
+
+use crate::{chunk::Chunk, chunk_type::ChunkType};
+#[derive(Debug)]
+pub struct Png {
+    header: [u8; 8],
+    chunks: Vec<Chunk>,
+}
+
+impl Png {
+    const STANDARD_HEADER: [u8; 8] = [137,80,78,71,13,10,26,10];
+
+    pub fn from_chunks(chunks: Vec<Chunk>) -> Self {
+        Png{ header: Self::STANDARD_HEADER, chunks }
+    }
+
+    pub fn append_chunk(&mut self, chunk: Chunk) {
+        self.chunks.push(chunk)
+    }
+
+    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk, String> {
+        if let Some(index) = self.chunks.iter().position(|chunk| chunk.chunk_type().to_string() == chunk_type) {
+            return Ok(self.chunks.remove(index));
+        }
+
+        Err("No such chunk exists".to_string())
+    }
+
+    pub fn header(&self) -> &[u8; 8] {
+        &self.header
+    }
+
+    pub fn chunks(&self) -> &[Chunk] {
+        &self.chunks
+    }
+
+    pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
+        self.chunks.iter().find(|chunk| chunk.chunk_type().to_string() == chunk_type) 
+           
+    }
+
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let chunk_bytes:Vec<u8> = self.chunks.iter().flat_map(|f|f.as_bytes().into_iter()).collect::<Vec<u8>>();
+
+        Vec::from(Self::STANDARD_HEADER)
+            .into_iter()
+            .chain(chunk_bytes.into_iter())
+            .collect::<Vec<u8>>()
+    }
+}
+
+impl Display for Png {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl TryFrom<&[u8]> for Png {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        const CHUNK_TYPE_LENGTH: usize = 4;
+        const CRC_LENGTH: usize = 4;
+
+        let mut chunks: Vec<Chunk> = Vec::new();
+        let mut start_index: usize = 8;
+
+        if value[..8] != Self::STANDARD_HEADER {
+            return Err("Invalid header".into());
+        }
+
+        while start_index < value.len() {
+            let buf:[u8;4] = value[start_index..start_index+4].try_into().unwrap();
+            let length: u32 = u32::from_be_bytes(buf);
+            let end_index: usize = start_index + 3 + CHUNK_TYPE_LENGTH + length as usize  + CRC_LENGTH; 
+
+            match Chunk::try_from(&value[start_index..=end_index]) {
+                Ok(chunk) => chunks.push(chunk),
+                Err(message) => return Err(message),
+            }
+
+            start_index = end_index + 1;
+        }
+
+        Ok(Png::from_chunks(chunks))
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -22,10 +109,10 @@ mod tests {
         Png::from_chunks(chunks)
     }
 
-    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk> {
+    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk, ()> {
         use std::str::FromStr;
 
-        let chunk_type = ChunkType::from_str(chunk_type)?;
+        let chunk_type = ChunkType::from_str(chunk_type).unwrap();
         let data: Vec<u8> = data.bytes().collect();
 
         Ok(Chunk::new(chunk_type, data))
@@ -77,10 +164,10 @@ mod tests {
 
     #[test]
     fn test_invalid_chunk() {
-        let mut chunk_bytes: Vec<u8> = testing_chunks()
-            .into_iter()
-            .flat_map(|chunk| chunk.as_bytes())
-            .collect();
+        let mut chunk_bytes: Vec<u8> = Vec::from(Png::STANDARD_HEADER);
+        let chunks: Vec<u8> = testing_chunks().into_iter().flat_map(|chunk| chunk.as_bytes()).collect();
+
+        chunk_bytes.extend(chunks);
 
         #[rustfmt::skip]
         let mut bad_chunk = vec![
