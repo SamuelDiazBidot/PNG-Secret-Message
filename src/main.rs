@@ -6,11 +6,12 @@ mod png;
 
 use clap::Clap;
 use args::*;
+use commands::{encode, decode, remove, print_chunks};
 
 pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = std::result::Result<T, Error>;
 
-fn main() {
+fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
     match opts.subcmd {
@@ -24,7 +25,9 @@ fn main() {
             println!("{:?} {}", remove.file, remove.chunk_type)
         },
         SubCommand::Print(print) => {
-            println!("{:?}", print.file)
+            print_chunks(print)?;
         }
     }
+
+    Ok(())
 }
