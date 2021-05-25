@@ -15,17 +15,17 @@ fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
 
     match opts.subcmd {
-        SubCommand::Encode(encode) => {
-            println!("{:?} {}", encode.file, encode.message)
+        SubCommand::Encode(args) => {
+            encode(args)?;
         },
-        SubCommand::Decode(decode) => {
-            println!("{:?} {}",decode.file, decode.chunk_type)
+        SubCommand::Decode(args) => {
+            decode(args)?;
         },
-        SubCommand::Remove(remove) => {
-            println!("{:?} {}", remove.file, remove.chunk_type)
+        SubCommand::Remove(args) => {
+            remove(args)?;
         },
-        SubCommand::Print(print) => {
-            print_chunks(print)?;
+        SubCommand::Print(args) => {
+            print_chunks(args)?;
         }
     }
 

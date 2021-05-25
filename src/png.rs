@@ -1,6 +1,6 @@
 use std::{convert::{TryFrom, TryInto}, fmt::{Display, Formatter}};
 
-use crate::{chunk::Chunk, chunk_type::ChunkType};
+use crate::{chunk::Chunk, Result};
 #[derive(Debug)]
 pub struct Png {
     header: [u8; 8],
@@ -18,12 +18,12 @@ impl Png {
         self.chunks.push(chunk)
     }
 
-    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk, String> {
+    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk> {
         if let Some(index) = self.chunks.iter().position(|chunk| chunk.chunk_type().to_string() == chunk_type) {
             return Ok(self.chunks.remove(index));
         }
 
-        Err("No such chunk exists".to_string())
+        Err("No such chunk exists".into())
     }
 
     pub fn header(&self) -> &[u8; 8] {
@@ -58,7 +58,7 @@ impl Display for Png {
 impl TryFrom<&[u8]> for Png {
     type Error = Box<dyn std::error::Error>;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Self> {
         const CHUNK_TYPE_LENGTH: usize = 4;
         const CRC_LENGTH: usize = 4;
 
@@ -109,10 +109,8 @@ mod tests {
         Png::from_chunks(chunks)
     }
 
-    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk, ()> {
-        use std::str::FromStr;
-
-        let chunk_type = ChunkType::from_str(chunk_type).unwrap();
+    fn chunk_from_strings(chunk_type: &str, data: &str) -> Result<Chunk> {
+        let chunk_type = ChunkType::from_str(chunk_type)?;
         let data: Vec<u8> = data.bytes().collect();
 
         Ok(Chunk::new(chunk_type, data))
@@ -249,6 +247,17 @@ mod tests {
         let png: Png = TryFrom::try_from(bytes.as_ref()).unwrap();
 
         let _png_string = format!("{}", png);
+    }
+
+    #[test]
+    fn test_png_from_bytes_append() {
+        let mut png: Png = Png::try_from(&PNG_FILE[..]).unwrap();
+        let chunk: Chunk = chunk_from_strings("TeSt", "Message").unwrap();
+        let mut expected_result: Vec<u8> = png.as_bytes();
+        expected_result.extend(chunk.as_bytes());
+        png.append_chunk(chunk);
+
+        assert_eq!(png.as_bytes(), expected_result )
     }
 
     // This is the raw bytes for a shrunken version of the `dice.png` image on Wikipedia

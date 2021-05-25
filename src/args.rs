@@ -2,8 +2,7 @@ use std::path::PathBuf;
 
 use clap::{AppSettings, Clap};
 
-/// This doc string acts as a help message when the user runs '--help'
-/// as do all doc strings on fields
+/// Encode and Decode messages into a PNG file.
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Samuel Diaz Bidot <samuel.diaz9@upr.edu>")]
 #[clap(setting = AppSettings::ColoredHelp)]
@@ -20,7 +19,7 @@ pub enum SubCommand {
     Print(Print),
 }
 
-/// A subcommand for controlling testing
+/// Encode a message into the PNG file
 #[derive(Clap)]
 pub struct Encode {
     pub file: PathBuf,
@@ -28,20 +27,20 @@ pub struct Encode {
     pub message: String,
 }
 
-/// A subcommand for controlling testing
+/// Decode a message from a PNG file
 #[derive(Clap)]
 pub struct Decode {
     pub file: PathBuf,
     pub chunk_type: String,
 }
 
-/// A subcommand for controlling testing
+/// Remove a chunk from a PNG file
 #[derive(Clap)]
 pub struct Remove {
     pub file: PathBuf,
     pub chunk_type: String,
 }
-/// A subcommand for controlling testing
+/// Print all the chunks in a PNG file
 #[derive(Clap)]
 pub struct Print {
     pub file: PathBuf,
