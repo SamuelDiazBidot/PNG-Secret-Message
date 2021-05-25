@@ -19,7 +19,7 @@ fn main() -> Result<()> {
             encode(args)?;
         },
         SubCommand::Decode(args) => {
-            decode(args)?;
+            println!("{}", decode(args)?);
         },
         SubCommand::Remove(args) => {
             remove(args)?;

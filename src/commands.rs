@@ -7,15 +7,13 @@ use crate::args::{Decode, Encode, Remove, Print};
 use crate::png::Png;
 use crate::chunk_type::ChunkType;
 use crate::chunk::Chunk;
-
-use crate::{Result, Error};
+use crate::Result;
 
 pub fn encode(args: Encode) -> Result<()> {
     let mut bytes: Vec<u8> = Vec::new();
     let mut f = fs::OpenOptions::new().write(true).read(true).create(true).open(args.file)?;
 
     f.read_to_end(&mut bytes)?;
-    f.seek(io::SeekFrom::Start(0))?;
 
     let mut png: Png = Png::try_from(bytes.as_slice())?;
     let chunk_type = ChunkType::from_str(&args.chunk_type)?;
@@ -23,24 +21,20 @@ pub fn encode(args: Encode) -> Result<()> {
 
     png.append_chunk(chunk);
 
+    f.seek(io::SeekFrom::Start(0))?;
     f.write_all(png.as_bytes().as_slice())?;
 
     Ok(())
 }
 
-pub fn decode(args: Decode) -> Result<()> {
+pub fn decode(args: Decode) -> Result<String> {
     let bytes: &[u8] = &fs::read(args.file)?;
     let png: Png = Png::try_from(bytes)?;
 
     match png.chunk_by_type(&args.chunk_type) {
-        Some(chunk) => {
-                let data = chunk.data_as_string()?;
-                println!("{}", data);       
-        }, 
+        Some(chunk) => return Ok(chunk.data_as_string()?),
         None => return Err("No such chunk type".into())
     }
-
-    Ok(())
 }
 
 pub fn remove(args: Remove) -> Result<()> {
@@ -48,12 +42,13 @@ pub fn remove(args: Remove) -> Result<()> {
     let mut f = fs::OpenOptions::new().write(true).read(true).open(args.file)?;
 
     f.read_to_end(&mut bytes)?;
-    f.set_len(0)?;
-    f.seek(io::SeekFrom::Start(0))?;
-
+    
     let mut png: Png = Png::try_from(bytes.as_slice())?;
 
     png.remove_chunk(&args.chunk_type)?;
+
+    f.set_len(0)?;
+    f.seek(io::SeekFrom::Start(0))?;
     f.write_all(png.as_bytes().as_slice())?;
 
     Ok(())

@@ -1,6 +1,6 @@
-use std::{convert::{TryFrom, TryInto}, fmt::{Display, Formatter}, str::{self, FromStr}, string};
+use std::{convert::{TryFrom, TryInto}, fmt::{Display, Formatter}, str::FromStr};
 use crc::crc32::checksum_ieee;
-use crate::chunk_type::ChunkType;
+use crate::{chunk_type::ChunkType, Result};
 
 #[derive(Debug)]
 pub struct Chunk {
@@ -35,8 +35,8 @@ impl Chunk {
         self.crc
     }
 
-   pub fn data_as_string(&self) -> Result<String, String> {
-       String::from_utf8(self.data.clone()).map_err(|op| op.to_string())
+   pub fn data_as_string(&self) -> Result<String> {
+       Ok(String::from_utf8(self.data.clone())?)
    } 
 
    pub fn as_bytes(&self) -> Vec<u8> {
@@ -61,12 +61,12 @@ impl Display for Chunk {
 impl TryFrom<&[u8]>  for Chunk {
     type Error = Box<dyn std::error::Error>;
 
-    fn try_from(value: &[u8]) -> Result<Chunk, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Chunk> {
         //get data
-        let length:u32 = u32::from_be_bytes(value[0..4].try_into().unwrap());
-        let chunk_type: ChunkType =  ChunkType::from_str(std::str::from_utf8(&value[4..8]).unwrap())?;
+        let length:u32 = u32::from_be_bytes(value[0..4].try_into()?);
+        let chunk_type: ChunkType =  ChunkType::from_str(std::str::from_utf8(&value[4..8])?)?;
         let data: Vec<u8> = value[8..value.len()-4].to_vec();
-        let crc: u32 = u32::from_be_bytes(value[value.len() - 4..].try_into().unwrap());
+        let crc: u32 = u32::from_be_bytes(value[value.len() - 4..].try_into()?);
 
         if crc != checksum_ieee(&value[4..value.len()-4]) {
             return Err("Checksum not equal".into())

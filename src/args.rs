@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-
 use clap::{AppSettings, Clap};
 
 /// Encode and Decode messages into a PNG file.

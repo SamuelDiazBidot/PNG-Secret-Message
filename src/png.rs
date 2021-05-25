@@ -1,6 +1,6 @@
 use std::{convert::{TryFrom, TryInto}, fmt::{Display, Formatter}};
-
 use crate::{chunk::Chunk, Result};
+
 #[derive(Debug)]
 pub struct Png {
     header: [u8; 8],
@@ -70,7 +70,7 @@ impl TryFrom<&[u8]> for Png {
         }
 
         while start_index < value.len() {
-            let buf:[u8;4] = value[start_index..start_index+4].try_into().unwrap();
+            let buf:[u8;4] = value[start_index..start_index+4].try_into()?;
             let length: u32 = u32::from_be_bytes(buf);
             let end_index: usize = start_index + 3 + CHUNK_TYPE_LENGTH + length as usize  + CRC_LENGTH; 
 
